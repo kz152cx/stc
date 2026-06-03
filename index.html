@@ -1,609 +1,426 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>圣诞树</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Times+New+Roman&display=swap" rel="stylesheet">
+    <title>汝灵 RU SPIRIT | 宋代汝窑当代数字艺术展</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Serif+SC:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
     <style>
         :root {
-            --bg-color: #000000;
-            --primary-gold: #d4af37;
-            --cream-white: #fceea7;
+            --color-celadon: #96bec3; /* 汝窑天青参考色 */
+            --color-moonwhite: #f0f7f4;
         }
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--bg-color);
-            font-family: 'Times New Roman', serif;
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background-color: #0b1116;
+            color: var(--color-moonwhite);
+            overflow-x: hidden;
+        }
+        .font-en { font-family: 'Cinzel', serif; }
+        
+        /* 东方美学毛玻璃效果 */
+        .glass-panel {
+            background: rgba(150, 190, 195, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(150, 190, 195, 0.15);
         }
         
-        /* Loader */
-        #loader {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-color);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 1s ease-out;
-        }
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-top: 2px solid var(--primary-gold);
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loading-text {
-            color: var(--primary-gold);
-            font-family: 'Cinzel', serif;
-            letter-spacing: 2px;
-            font-size: 14px;
+        /* 仿冰裂纹背景纹理 */
+        .crack-bg {
+            background-image: linear-gradient(rgba(11, 17, 22, 0.95), rgba(11, 17, 22, 0.95)), 
+                              url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><path d="M0 20 L30 40 L70 10 L100 30 M30 40 L50 90 L100 70 M50 90 L10 100" stroke="rgba(150,190,195,0.04)" stroke-width="1" fill="none"/></svg>');
         }
 
-        /* UI Layer */
-        #ui-layer {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: opacity 0.5s ease;
-        }
-        .ui-hidden {
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-        
-        h1 {
-            font-family: 'Cinzel', serif;
-            font-size: 56px;
-            margin-top: 40px;
-            background: linear-gradient(180deg, #ffffff 0%, var(--primary-gold) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            text-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
-        }
-
-        /* Upload Controls */
-        .upload-wrapper {
-            position: absolute;
-            bottom: 50px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            pointer-events: auto;
-        }
-        .upload-btn {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid var(--primary-gold);
-            color: var(--primary-gold);
-            padding: 12px 30px;
-            font-family: 'Cinzel', serif;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-        .upload-btn:hover {
-            background: rgba(212, 175, 55, 0.2);
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
-        }
-        .hint {
-            margin-top: 10px;
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 12px;
-            letter-spacing: 1px;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-        }
-
-        /* Webcam Container (Modified) */
-        #webcam-container {
-            position: fixed;
-            bottom: 20px; 
-            right: 20px;
-            width: 160px;
-            height: 120px;
-            border: 2px solid var(--primary-gold);
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
-            overflow: hidden;
-            z-index: 100;
-            background-color: #111;
-            /* No opacity: 0 here, it will be visible by default */
-        }
-        #video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* 镜像翻转，更符合照镜子的直觉 */
-        }
-        #cv-canvas {
-            display: none; /* 隐藏内置的处理用canvas，保持UI整洁 */
-        }
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b1116; }
+        ::-webkit-scrollbar-thumb { background: rgba(150, 190, 195, 0.3); border-radius: 3px; }
     </style>
-
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
-            }
-        }
-    </script>
 </head>
-<body>
+<body class="crack-bg">
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <div class="loading-text">LOADING HOLIDAY MAGIC</div>
-    </div>
+    <header class="fixed top-0 left-0 w-full z-50 px-8 py-6 flex justify-between items-center glass-panel border-b-0">
+        <div class="text-xl font-medium tracking-widest font-en text-stone-300">RU SPIRIT</div>
+        <nav class="hidden md:flex space-x-12 text-sm tracking-widest text-stone-400">
+            <a href="#hero" class="hover:text-cyan-200 transition-colors">首页</a>
+            <a href="#intro" class="hover:text-cyan-200 transition-colors">系列作品</a>
+            <a href="#showroom" class="hover:text-cyan-200 transition-colors">3D展厅</a>
+            <a href="#concept" class="hover:text-cyan-200 transition-colors">设计理念</a>
+            <a href="#deriv" class="hover:text-cyan-200 transition-colors">文创衍生</a>
+        </nav>
+        <button class="px-5 py-2 text-xs tracking-widest border border-cyan-700/50 rounded-full hover:bg-cyan-950/30 transition-all">观展预约</button>
+    </header>
 
-    <div id="ui-layer">
-        <h1>    </h1>
-        <div class="upload-wrapper">
-            <label for="upload" class="upload-btn">ADD MEMORIES</label>
-            <input type="file" id="upload" accept="image/*" style="display:none">
-            <div class="hint">Press 'H' to Hide Controls</div>
-        </div>
-    </div>
-
-    <div id="webcam-container">
-        <video id="video" autoplay playsinline></video>
-        <canvas id="cv-canvas" width="160" height="120"></canvas>
-    </div>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-        import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
-
-        // --- Core Variables ---
-        let scene, camera, renderer, composer, mainGroup, pmremGenerator;
-        let particles = [];
-        let dustSystem;
-        let handLandmarker;
-        let video = document.getElementById('video');
-        let lastVideoTime = -1;
+    <section id="hero" class="relative h-screen w-full flex items-center justify-center overflow-hidden pt-20">
+        <div class="absolute w-[500px] h-[500px] bg-cyan-900/10 rounded-full filter blur-[120px] animate-pulse" style="animation-duration: 8s;"></div>
         
-        let treeMaterials = {}; 
-        let treeColorState = 0; // 用于控制颜色循环: 0=初始色, 1=红色系, 2=青色系
+        <div class="text-center z-10 space-y-6 max-w-4xl px-4">
+            <h1 class="text-5xl md:text-8xl tracking-[0.3em] font-en font-bold text-transparent bg-clip-text bg-gradient-to-b from-stone-100 to-stone-400">汝灵</h1>
+            <p class="font-en tracking-[0.5em] text-sm md:text-xl text-cyan-200/70">RU SPIRIT</p>
+            <div class="h-[1px] w-24 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent mx-auto my-8"></div>
+            <p class="text-base md:text-lg tracking-[0.4em] text-stone-300 font-light px-2">“ 以汝窑之魂，化为当代数字生命 ”</p>
+        </div>
 
-        // --- State Machine ---
-        const STATE = {
-            mode: 'TREE',      // 'TREE', 'SCATTER', 'FOCUS'
-            targetMode: 'TREE',
-            focusTarget: null,
-            transitionT: 0
-        };
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 flex flex-col items-center space-y-2 text-stone-500 text-xs tracking-widest">
+            <span>SCROLL DOWN</span>
+            <div class="w-[1px] h-12 bg-gradient-to-b from-stone-500 to-transparent"></div>
+        </div>
+    </section>
 
-        // --- Init Pipeline ---
-        async function init() {
-            initThreeJS();
-            createContent();
-            setupPostProcessing();
-            await initMediaPipe();
+    <section id="intro" class="py-32 px-6 md:px-24 max-w-7xl mx-auto">
+        <div class="text-center mb-24">
+            <span class="font-en text-xs tracking-[0.4em] text-cyan-500 block mb-3">COLLECTION</span>
+            <h2 class="text-3xl font-light tracking-widest text-stone-200">核心系列作品</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div class="glass-panel rounded-2xl p-6 group hover:translate-y-[-10px] transition-all duration-500 flex flex-col justify-between">
+                <div>
+                    <div class="aspect-[1/2] rounded-xl overflow-hidden bg-stone-900/40 relative mb-6">
+                        <img src="lotus.jpg" alt="汝灵·初绽" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    </div>
+                    <h3 class="text-xl tracking-widest mb-3 text-stone-200 flex justify-between items-center">
+                        <span>汝灵·初绽</span>
+                        <span class="text-xs font-en text-cyan-600">01</span>
+                    </h3>
+                    <p class="text-sm text-stone-400 font-light leading-relaxed tracking-wide mb-4">手持一瓣傲然独立的粉色莲花，巧妙扣合了北宋汝窑经典的莲花瓣圈足器物美学。代表着生命的首次觉醒与在喧嚣凡尘中萌发的清雅希望。</p>
+                </div>
+                <button class="w-full py-3 mt-4 text-xs tracking-widest border border-stone-800 rounded-lg group-hover:border-cyan-800/50 transition-colors">探索详情</button>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-6 group hover:translate-y-[-10px] transition-all duration-500 flex flex-col justify-between">
+                <div>
+                    <div class="aspect-[1/2] rounded-xl overflow-hidden bg-stone-900/40 relative mb-6">
+                        <img src="moon.jpg" alt="汝灵·望月" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    </div>
+                    <h3 class="text-xl tracking-widest mb-3 text-stone-200 flex justify-between items-center">
+                        <span>汝灵·望月</span>
+                        <span class="text-xs font-en text-cyan-600">02</span>
+                    </h3>
+                    <p class="text-sm text-stone-400 font-light leading-relaxed tracking-wide mb-4">双臂轻柔合抱一颗散发温柔暖光的微缩明月，借由月光的呼吸频率与观众的心灵产生频率共振，表达永恒的温润守护、常态陪伴与内在治愈力。</p>
+                </div>
+                <button class="w-full py-3 mt-4 text-xs tracking-widest border border-stone-800 rounded-lg group-hover:border-cyan-800/50 transition-colors">探索详情</button>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-6 group hover:translate-y-[-10px] transition-all duration-500 flex flex-col justify-between">
+                <div>
+                    <div class="aspect-[1/2] rounded-xl overflow-hidden bg-stone-900/40 relative mb-6">
+                        <img src="classic.jpg" alt="汝灵·静守" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700">
+                    </div>
+                    <h3 class="text-xl tracking-widest mb-3 text-stone-200 flex justify-between items-center">
+                        <span>汝灵·静守</span>
+                        <span class="text-xs font-en text-cyan-600">03</span>
+                    </h3>
+                    <p class="text-sm text-stone-400 font-light leading-relaxed tracking-wide mb-4">最凝练纯粹的拟人瓶身形态，佩戴着精致的传统古典如意锁流苏。静立闭目间，仿佛在进行一场跨越千年的时空对话，诉说华夏文脉的守望与沉淀。</p>
+                </div>
+                <button class="w-full py-3 mt-4 text-xs tracking-widest border border-stone-800 rounded-lg group-hover:border-cyan-800/50 transition-colors">探索详情</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="showroom" class="w-full h-screen relative bg-gradient-to-b from-transparent via-[#070b0e] to-transparent">
+        <div class="absolute top-12 left-1/2 transform -translate-x-1/2 text-center z-10">
+            <span class="font-en text-xs tracking-[0.4em] text-cyan-500 block mb-2">VIRTUAL MUSEUM</span>
+            <h2 class="text-2xl font-light tracking-widest text-stone-200">3D沉浸式数字展台</h2>
+            <p class="text-xs text-stone-500 mt-2">使用鼠标拖拽旋转，滚轮放大缩小查看细节</p>
+        </div>
+
+        <div id="three-canvas-container" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+        <div class="absolute bottom-16 left-1/2 transform -translate-x-1/2 z-20 flex space-x-6 glass-panel px-6 py-3 rounded-full">
+            <button onclick="switchModel(0)" class="nav-btn px-4 py-1 text-xs tracking-widest text-cyan-200 hover:text-white transition-colors">01 初绽</button>
+            <div class="w-[1px] h-4 bg-stone-700 self-center"></div>
+            <button onclick="switchModel(1)" class="nav-btn px-4 py-1 text-xs tracking-widest text-stone-400 hover:text-white transition-colors">02 望月</button>
+            <div class="w-[1px] h-4 bg-stone-700 self-center"></div>
+            <button onclick="switchModel(2)" class="nav-btn px-4 py-1 text-xs tracking-widest text-stone-400 hover:text-white transition-colors">03 静守</button>
+        </div>
+    </section>
+
+    <section id="concept" class="py-32 px-6 md:px-24 max-w-6xl mx-auto">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div class="space-y-8">
+                <div>
+                    <span class="font-en text-xs tracking-[0.4em] text-cyan-500 block mb-3">DESIGN PHILOSOPHY</span>
+                    <h2 class="text-4xl font-light tracking-widest text-stone-100 leading-snug">传统华夏美学<br>的当代数字重塑</h2>
+                </div>
+                <p class="text-stone-400 font-light leading-relaxed tracking-wide text-sm">
+                    《汝灵》系列的内核在于探寻古代重器在赛博时代的“数字灵性”。北宋汝窑以天青为尊，微弱的冰裂纹路蕴含着自然造物的缺憾之美。我们将这种静谧、古拙的优雅，剥离出冰冷的展柜，融汇至充满呼吸感与陪伴感的现代情绪治愈IP中。
+                </p>
+                <div class="flex flex-wrap gap-3">
+                    <span class="px-4 py-1.5 rounded-full bg-cyan-950/30 text-xs text-cyan-300 border border-cyan-900/50 tracking-wider">天青釉面</span>
+                    <span class="px-4 py-1.5 rounded-full bg-cyan-950/30 text-xs text-cyan-300 border border-cyan-900/50 tracking-wider">自然开片纹</span>
+                    <span class="px-4 py-1.5 rounded-full bg-cyan-950/30 text-xs text-cyan-300 border border-cyan-900/50 tracking-wider">东方哲思</span>
+                    <span class="px-4 py-1.5 rounded-full bg-cyan-950/30 text-xs text-cyan-300 border border-cyan-900/50 tracking-wider">情绪治愈</span>
+                </div>
+            </div>
             
-            // Hide Loader
-            const loader = document.getElementById('loader');
-            loader.style.opacity = '0';
-            setTimeout(() => loader.remove(), 1000);
+            <div class="grid grid-cols-2 gap-4">
+                <div class="glass-panel p-8 rounded-2xl text-center space-y-2">
+                    <div class="text-xs text-stone-500 font-en tracking-widest">ORIGIN</div>
+                    <div class="text-lg text-stone-300 font-medium tracking-wider">宋代汝窑</div>
+                </div>
+                <div class="glass-panel p-8 rounded-2xl text-center space-y-2 mt-6">
+                    <div class="text-xs text-stone-500 font-en tracking-widest">TEXTURE</div>
+                    <div class="text-lg text-stone-300 font-medium tracking-wider">雨过天青</div>
+                </div>
+                <div class="glass-panel p-8 rounded-2xl text-center space-y-2">
+                    <div class="text-xs text-stone-500 font-en tracking-widest">SHAPE</div>
+                    <div class="text-lg text-stone-300 font-medium tracking-wider">经典器型化身</div>
+                </div>
+                <div class="glass-panel p-8 rounded-2xl text-center space-y-2 mt-6">
+                    <div class="text-xs text-stone-500 font-en tracking-widest">SPIRIT</div>
+                    <div class="text-lg text-stone-300 font-medium tracking-wider">温润克制</div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-            // Events
-            window.addEventListener('resize', onWindowResize);
-            
-            // 全局 GUI 隐藏逻辑
-            window.addEventListener('keydown', (e) => {
-                if (e.key.toLowerCase() === 'h') {
-                    // 只切换 UI 层的可见性，不会影响独立在外面的摄像头容器
-                    document.getElementById('ui-layer').classList.toggle('ui-hidden');
-                }
-            });
-            
-            setupUpload();
+    <section id="deriv" class="py-32 px-6 md:px-24 max-w-7xl mx-auto">
+        <div class="text-center mb-20">
+            <span class="font-en text-xs tracking-[0.4em] text-cyan-500 block mb-3">DERIVATIVES</span>
+            <h2 class="text-3xl font-light tracking-widest text-stone-200">艺术衍生与衍生生态</h2>
+        </div>
 
-            // Start Loop
-            updateTargets(STATE.mode);
-            renderer.setAnimationLoop(animate);
-        }
+        <div class="columns-1 sm:columns-2 lg:columns-4 gap-6 space-y-6">
+            <div class="break-inside-avoid glass-panel p-4 rounded-xl space-y-3">
+                <div class="bg-stone-900/60 aspect-square rounded-lg flex items-center justify-center text-stone-600 text-xs">艺术盲盒 (Mock)</div>
+                <div class="flex justify-between items-center text-sm px-1"><span class="text-stone-300 font-light">汝灵系列潮流盲盒</span><span class="font-en text-cyan-500">￥79</span></div>
+            </div>
+            <div class="break-inside-avoid glass-panel p-4 rounded-xl space-y-3">
+                <div class="bg-stone-900/60 aspect-[3/4] rounded-lg flex items-center justify-center text-stone-600 text-xs">温润台灯 (Mock)</div>
+                <div class="flex justify-between items-center text-sm px-1"><span class="text-stone-300 font-light">《望月》呼吸感睡眠夜灯</span><span class="font-en text-cyan-500">￥269</span></div>
+            </div>
+            <div class="break-inside-avoid glass-panel p-4 rounded-xl space-y-3">
+                <div class="bg-stone-900/60 aspect-[4/5] rounded-lg flex items-center justify-center text-stone-600 text-xs">中式车载摆件 (Mock)</div>
+                <div class="flex justify-between items-center text-sm px-1"><span class="text-stone-300 font-light">汝灵瓷质微型车摆</span><span class="font-en text-cyan-500">￥128</span></div>
+            </div>
+            <div class="break-inside-avoid glass-panel p-4 rounded-xl space-y-3">
+                <div class="break-inside-avoid glass-panel p-4 rounded-xl space-y-3">
+                <div class="bg-stone-900/60 aspect-square rounded-lg flex items-center justify-center text-stone-600 text-xs">冰裂纹保护壳 (Mock)</div>
+                <div class="flex justify-between items-center text-sm px-1"><span class="text-stone-300 font-light">刺绣艺术流苏挂件手机壳</span><span class="font-en text-cyan-500">￥49</span></div>
+            </div>
+        </div>
+    </section>
 
-        // --- Three.js Setup ---
-        function initThreeJS() {
+    <footer class="py-12 border-t border-stone-900 text-center text-xs tracking-widest text-stone-600">
+        <p>© 2026 汝灵 RU SPIRIT . ALL RIGHTS RESERVED. ORIGINAL ART DESIGN.</p>
+    </footer>
+
+    <script>
+        let scene, camera, renderer, stage, billboard;
+        const container = document.getElementById('three-canvas-container');
+        
+        // 此处填入你刚才发送给我的三张作品图片的链接/或本地图片相对路径
+        // 目前暂用包含不同颜色标记的画布模拟区分
+        const imageUrls = [
+            'lotus.jpg',
+            'moon.jpg',
+            'classic.jpg'
+        ];
+        
+        let textures = [];
+        let currentActiveIndex = 0;
+
+        function initThree() {
+            // 1. 创建场景与相机
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x000000);
-            
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 2, 50);
+            scene.fog = new THREE.FogExp2(0x0b1116, 0.15);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.toneMapping = THREE.ReinhardToneMapping;
-            renderer.toneMappingExposure = 2.2;
-            document.body.appendChild(renderer.domElement);
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 1.5, 5);
 
-            pmremGenerator = new THREE.PMREMGenerator(renderer);
-            pmremGenerator.compileEquirectangularShader();
-            scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+            // 2. 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
 
-            mainGroup = new THREE.Group();
-            scene.add(mainGroup);
-
-            // Lighting
-            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-            
-            const internalLight = new THREE.PointLight(0xff8800, 2, 50);
-            internalLight.position.set(0, 5, 0);
-            scene.add(internalLight);
-
-            const goldSpot = new THREE.SpotLight(0xd4af37, 1200);
-            goldSpot.position.set(30, 40, 40);
-            scene.add(goldSpot);
-
-            const blueSpot = new THREE.SpotLight(0x88bbff, 600);
-            blueSpot.position.set(-30, 20, -30);
-            scene.add(blueSpot);
-        }
-
-        function setupPostProcessing() {
-            const renderScene = new RenderPass(scene, camera);
-            const bloomPass = new UnrealBloomPass(
-                new THREE.Vector2(window.innerWidth, window.innerHeight),
-                0.45, // strength
-                0.4,  // radius
-                0.7   // threshold
-            );
-            composer = new EffectComposer(renderer);
-            composer.addPass(renderScene);
-            composer.addPass(bloomPass);
-        }
-
-        // --- Procedural Generation ---
-        function createCandyTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256; canvas.height = 256;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 256, 256);
-            ctx.fillStyle = '#ff0000';
-            for (let i = -256; i < 512; i += 64) {
-                ctx.beginPath();
-                ctx.moveTo(i, 0); ctx.lineTo(i + 32, 0);
-                ctx.lineTo(i - 256 + 32, 256); ctx.lineTo(i - 256, 256);
-                ctx.fill();
-            }
-            return new THREE.CanvasTexture(canvas);
-        }
-
-        function createDefaultPhotoText() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0,0,512,512);
-            ctx.fillStyle = '#d4af37'; ctx.font = 'bold 60px Cinzel';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText('JOYEUX', 256, 216);
-            ctx.fillText('NOEL', 256, 296);
-            return new THREE.CanvasTexture(canvas);
-        }
-
-        function createCandyCaneGeometry() {
-            const curve = new THREE.CatmullRomCurve3([
-                new THREE.Vector3(0, -1, 0),
-                new THREE.Vector3(0, 1, 0),
-                new THREE.Vector3(0.5, 1.5, 0),
-                new THREE.Vector3(1, 1, 0)
-            ]);
-            return new THREE.TubeGeometry(curve, 20, 0.15, 8, false);
-        }
-
-        // --- Particle Class ---
-        class Particle {
-            constructor(mesh, type) {
-                this.mesh = mesh;
-                this.type = type;
-                this.targetPos = new THREE.Vector3();
-                this.targetRot = new THREE.Euler();
-                this.targetScale = new THREE.Vector3(1,1,1);
-                this.velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 2,
-                    (Math.random() - 0.5) * 2,
-                    (Math.random() - 0.5) * 2
-                ).normalize();
-                
-                // Initial scatter position
-                this.mesh.position.set(
-                    (Math.random() - 0.5) * 40,
-                    (Math.random() - 0.5) * 40,
-                    (Math.random() - 0.5) * 40
-                );
-            }
-
-            update() {
-                // Lerp position, rotation, scale
-                this.mesh.position.lerp(this.targetPos, 0.05);
-                
-                if (STATE.mode === 'SCATTER') {
-                    this.mesh.rotation.x += this.velocity.x * 0.02;
-                    this.mesh.rotation.y += this.velocity.y * 0.02;
-                    this.mesh.rotation.z += this.velocity.z * 0.02;
-                } else {
-                    this.mesh.quaternion.slerp(new THREE.Quaternion().setFromEuler(this.targetRot), 0.05);
-                }
-
-                this.mesh.scale.lerp(this.targetScale, 0.05);
-            }
-        }
-
-        // --- Content Building ---
-        function createContent() {
-            const geoBox = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-            const geoSphere = new THREE.SphereGeometry(0.3, 16, 16);
-            const geoCandy = createCandyCaneGeometry();
-            
-            // 初始化全局材质
-            treeMaterials.gold = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.8, roughness: 0.2 });
-            treeMaterials.green = new THREE.MeshStandardMaterial({ color: 0x003311, metalness: 0.3, roughness: 0.7 });
-            treeMaterials.red = new THREE.MeshPhysicalMaterial({ color: 0xaa0000, clearcoat: 1.0, clearcoatRoughness: 0.1 });
-            
-            const matCandy = new THREE.MeshStandardMaterial({ map: createCandyTexture() });
-            const defaultPhotoTex = createDefaultPhotoText();
-            defaultPhotoTex.colorSpace = THREE.SRGBColorSpace;
-
-            // 增加粒子总数到 2500
-            const totalMainParticles = 2500; 
-            
-            let photoCount = 0;
-            const MAX_PHOTOS = 15;
-
-            for(let i=0; i<totalMainParticles; i++) {
-                let mesh, type;
-                const rand = Math.random();
-                
-                if(rand < 0.1 && photoCount < MAX_PHOTOS) {
-                    type = 'PHOTO';
-                    mesh = createPhotoMesh(defaultPhotoTex);
-                    photoCount++;
-                } else if(rand < 0.13) { 
-                    type = 'CANDY';
-                    mesh = new THREE.Mesh(geoCandy, matCandy);
-                    mesh.scale.set(0.5, 0.5, 0.5);
-                } else if(rand < 0.65) {
-                    type = 'SPHERE';
-                    mesh = new THREE.Mesh(geoSphere, Math.random() > 0.5 ? treeMaterials.gold : treeMaterials.red);
-                } else {
-                    type = 'BOX';
-                    mesh = new THREE.Mesh(geoBox, Math.random() > 0.5 ? treeMaterials.gold : treeMaterials.green);
-                }
-
-                mainGroup.add(mesh);
-                particles.push(new Particle(mesh, type));
-            }
-
-            // Dust Particles
-            const dustGeo = new THREE.BufferGeometry();
-            const dustPos = new Float32Array(2500 * 3);
-            for(let i=0; i<7500; i++) dustPos[i] = (Math.random() - 0.5) * 50;
-            dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-            const dustMat = new THREE.PointsMaterial({ color: 0xfceea7, size: 0.1, transparent: true, opacity: 0.6 });
-            dustSystem = new THREE.Points(dustGeo, dustMat);
-            mainGroup.add(dustSystem);
-        }
-
-        function createPhotoMesh(texture) {
-            const group = new THREE.Group();
-            const planeMat = new THREE.MeshBasicMaterial({ map: texture });
-            const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), planeMat);
-            plane.position.z = 0.06;
-            const frameMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 1, roughness: 0.2 });
-            const frame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 0.1), frameMat);
-            group.add(plane);
-            group.add(frame);
-            return group;
-        }
-
-        // --- Logic & State Updates ---
-        function updateTargets(mode) {
-            const isFormingTree = (mode === 'TREE' && STATE.mode !== 'TREE');
-            STATE.mode = mode;
-            const maxRadius = 10;
-            const height = 25;
-
-            // 循环颜色改变逻辑: 正常色 -> 红色系 -> 青色系 -> 正常色...
-            if (isFormingTree && treeMaterials.green) {
-                treeColorState = (treeColorState + 1) % 3; 
-
-                if (treeColorState === 0) {
-                    treeMaterials.green.color.setHex(0x003311); 
-                    treeMaterials.gold.color.setHex(0xd4af37);  
-                    treeMaterials.red.color.setHex(0xaa0000);   
-                } else if (treeColorState === 1) {
-                    treeMaterials.green.color.setHex(0x550000); 
-                    treeMaterials.gold.color.setHex(0xffaa00);  
-                    treeMaterials.red.color.setHex(0xffffff);   
-                } else if (treeColorState === 2) {
-                    treeMaterials.green.color.setHex(0x003344); 
-                    treeMaterials.gold.color.setHex(0xcccccc);  
-                    treeMaterials.red.color.setHex(0x0088ff);   
-                }
-            }
-
-            particles.forEach(p => p.targetScale.set(1,1,1));
-
-            if (mode === 'TREE') {
-                particles.forEach((p, i) => {
-                    const t = i / particles.length;
-                    const radius = maxRadius * (1 - t);
-                    const angle = t * 65 * Math.PI; 
-                    
-                    const x = Math.cos(angle) * radius;
-                    const y = t * height - (height/2);
-                    const z = Math.sin(angle) * radius;
-                    
-                    p.targetPos.set(
-                        x + (Math.random()-0.5)*0.6, 
-                        y + (Math.random()-0.5)*0.6, 
-                        z + (Math.random()-0.5)*0.6
-                    );
-                    p.targetRot.set(0, angle, 0);
-                });
-            } 
-            else if (mode === 'SCATTER') {
-                particles.forEach(p => {
-                    const r = 8 + Math.random() * 12;
-                    const theta = Math.random() * 2 * Math.PI;
-                    const phi = Math.acos((Math.random() * 2) - 1);
-                    p.targetPos.set(
-                        r * Math.sin(phi) * Math.cos(theta),
-                        r * Math.sin(phi) * Math.sin(theta),
-                        r * Math.cos(phi)
-                    );
-                });
-            }
-            else if (mode === 'FOCUS') {
-                const photos = particles.filter(p => p.type === 'PHOTO');
-                if (photos.length > 0) {
-                    STATE.focusTarget = STATE.focusTarget || photos[Math.floor(Math.random() * photos.length)];
-                }
-                
-                particles.forEach(p => {
-                    if(p === STATE.focusTarget) {
-                        p.targetPos.set(0, 2, 35);
-                        p.targetRot.set(0, 0, 0);
-                        p.targetScale.set(4.5, 4.5, 4.5);
-                    } else {
-                        const r = 15 + Math.random() * 20;
-                        const theta = Math.random() * 2 * Math.PI;
-                        const phi = Math.acos((Math.random() * 2) - 1);
-                        p.targetPos.set(
-                            r * Math.sin(phi) * Math.cos(theta),
-                            r * Math.sin(phi) * Math.sin(theta),
-                            r * Math.cos(phi) - 15 
-                        );
-                    }
-                });
-            }
-        }
-
-        // --- Upload Logic ---
-        function setupUpload() {
-            document.getElementById('upload').addEventListener('change', (e) => {
-                const f = e.target.files[0];
-                if(!f) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    new THREE.TextureLoader().load(ev.target.result, (t) => {
-                        t.colorSpace = THREE.SRGBColorSpace;
-                        addPhotoToScene(t);
-                    });
-                }
-                reader.readAsDataURL(f);
-            });
-        }
-
-        function addPhotoToScene(texture) {
-            const mesh = createPhotoMesh(texture);
-            mainGroup.add(mesh);
-            const particle = new Particle(mesh, 'PHOTO');
-            particles.push(particle);
-            
-            STATE.focusTarget = particle;
-            updateTargets('FOCUS');
-        }
-
-        // --- MediaPipe CV ---
-        async function initMediaPipe() {
-            const vision = await FilesetResolver.forVisionTasks(
-                "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
-            );
-            handLandmarker = await HandLandmarker.createFromOptions(vision, {
-                baseOptions: {
-                    modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-                    delegate: "GPU"
-                },
-                runningMode: "VIDEO",
-                numHands: 1
+            // 3. 纹理加载
+            const loader = new THREE.TextureLoader();
+            imageUrls.forEach((url) => {
+                textures.push(loader.load(url));
             });
 
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 160, height: 120 } });
-            video.srcObject = stream;
-            await new Promise((resolve) => video.onloadeddata = resolve);
-        }
-
-        function processGestures() {
-            if (!handLandmarker || video.readyState !== 4) return;
+            // 4. 构建华丽玉石/镜面圆形舞台
+            const stageGroup = new THREE.Group();
             
-            let startTimeMs = performance.now();
-            if (lastVideoTime !== video.currentTime) {
-                lastVideoTime = video.currentTime;
-                const results = handLandmarker.detectForVideo(video, startTimeMs);
-                
-                if (results.landmarks.length > 0) {
-                    const lm = results.landmarks[0];
-                    const getDist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y, p1.z - p2.z);
-                    
-                    const center = lm[9];
-                    mainGroup.rotation.y = THREE.MathUtils.lerp(mainGroup.rotation.y, (center.x - 0.5) * 2, 0.1);
-                    mainGroup.rotation.x = THREE.MathUtils.lerp(mainGroup.rotation.x, (center.y - 0.5) * 1.5, 0.1);
+            // 舞台底座
+            const stageGeo = new THREE.CylinderGeometry(1.2, 1.3, 0.15, 64);
+            const stageMat = new THREE.MeshStandardMaterial({
+                color: 0x1f3139,
+                roughness: 0.2,
+                metalness: 0.5,
+                transparent: true,
+                opacity: 0.9
+            });
+            stage = new THREE.Mesh(stageGeo, stageMat);
+            stage.position.y = -0.075;
+            stage.receiveShadow = true;
+            stageGroup.add(stage);
 
-                    const isPinch = getDist(lm[4], lm[8]) < 0.05;
-                    const wrist = lm[0];
-                    const fingers = [lm[8], lm[12], lm[16], lm[20]];
-                    const avgDist = fingers.reduce((sum, f) => sum + getDist(f, wrist), 0) / 4;
-                    
-                    const isFist = avgDist < 0.25;
-                    const isOpen = avgDist > 0.4;
+            // 舞台内嵌发光环
+            const ringGeo = new THREE.RingGeometry(1.15, 1.18, 64);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0x96bec3, side: THREE.DoubleSide, transparent:true, opacity: 0.4 });
+            const lightRing = new THREE.Mesh(ringGeo, ringMat);
+            lightRing.rotation.x = Math.PI / 2;
+            lightRing.position.y = 0.08;
+            stageGroup.add(lightRing);
+            
+            scene.add(stageGroup);
 
-                    let newMode = STATE.mode;
-                    if (isPinch) newMode = 'FOCUS';
-                    else if (isFist) newMode = 'TREE';
-                    else if (isOpen) newMode = 'SCATTER';
+            // 5. 采用平面映射（Billboard/Sprite）形式模拟精细全息展示
+            const artGeo = new THREE.PlaneGeometry(1.2, 2.4);
+            const artMat = new THREE.MeshStandardMaterial({
+                map: textures[0],
+                transparent: true,
+                side: THREE.DoubleSide,
+                alphaTest: 0.1,
+                roughness: 0.3
+            });
+            billboard = new THREE.Mesh(artGeo, artMat);
+            billboard.position.set(0, 1.2, 0);
+            billboard.castShadow = true;
+            scene.add(billboard);
 
-                    if (newMode !== STATE.mode) {
-                        STATE.focusTarget = null;
-                        updateTargets(newMode);
-                    }
-                } else {
-                    mainGroup.rotation.y = THREE.MathUtils.lerp(mainGroup.rotation.y, 0, 0.05);
-                    mainGroup.rotation.x = THREE.MathUtils.lerp(mainGroup.rotation.x, 0, 0.05);
-                }
+            // 模拟下方的倒影效果
+            const reflectMat = new THREE.MeshBasicMaterial({
+                map: textures[0],
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide
+            });
+            reflection = new THREE.Mesh(artGeo, reflectMat);
+            reflection.position.set(0, -1.2, 0);
+            reflection.scale.y = -1; // 垂直翻转模拟倒影
+            scene.add(reflection);
+
+            // 6. 灯光设计 (高级博物馆级聚光灯)
+            const ambientLight = new THREE.AmbientLight(0x1a2a30, 1.5);
+            scene.add(ambientLight);
+
+            const spotlight = new THREE.SpotLight(0xffffff, 3);
+            spotlight.position.set(0, 5, 2);
+            spotlight.angle = Math.PI / 4;
+            spotlight.penumbra = 0.8;
+            spotlight.castShadow = true;
+            scene.add(spotlight);
+
+            const blueTopLight = new THREE.DirectionalLight(0x96bec3, 1);
+            blueTopLight.position.set(-2, 3, -1);
+            scene.add(blueTopLight);
+
+            // 7. 动态环境粒子 (模拟空气中的微光浮尘)
+            const particleGeo = new THREE.BufferGeometry();
+            const particleCount = 60;
+            const posArray = new Float32Array(particleCount * 3);
+            for(let i=0; i<particleCount*3; i+=3) {
+                posArray[i] = (Math.random() - 0.5) * 4;
+                posArray[i+1] = Math.random() * 3;
+                posArray[i+2] = (Math.random() - 0.5) * 4;
             }
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particleMat = new THREE.PointsMaterial({ size: 0.02, color: 0x96bec3, transparent: true, opacity: 0.6 });
+            const particles = new THREE.Points(particleGeo, particleMat);
+            scene.add(particles);
+
+            // 交互：鼠标拖拽与顺滑动效
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+            
+            container.addEventListener('mousedown', () => isDragging = true);
+            container.addEventListener('mousemove', (e) => {
+                const deltaMove = { x: e.offsetX - previousMousePosition.x, y: e.offsetY - previousMousePosition.y };
+                if (isDragging) {
+                    // 让舞台和雕像整体旋转
+                    billboard.rotation.y += deltaMove.x * 0.005;
+                    reflection.rotation.y += deltaMove.x * 0.005;
+                    stageGroup.rotation.y += deltaMove.x * 0.005;
+                }
+                previousMousePosition = { x: e.offsetX, y: e.offsetY };
+            });
+            window.addEventListener('mouseup', () => isDragging = false);
+
+            // 滚轮缩放机制限制
+            window.addEventListener('wheel', (e) => {
+                if(container.matches(':hover')) {
+                    camera.position.z += e.deltaY * 0.002;
+                    camera.position.z = Math.max(3, Math.min(camera.position.z, 7));
+                }
+            });
+
+            // 帧循环渲染
+            const clock = new THREE.Clock();
+            function animate() {
+                requestAnimationFrame(animate);
+                const elapsedTime = clock.getElapsedTime();
+
+                // 慢速自转（当没有拖拽时）
+                if(!isDragging) {
+                    billboard.rotation.y = elapsedTime * 0.2;
+                    reflection.rotation.y = elapsedTime * 0.2;
+                    stageGroup.rotation.y = elapsedTime * 0.2;
+                }
+
+                // 悬浮呼吸动画效果
+                billboard.position.y = 1.2 + Math.sin(elapsedTime * 1.5) * 0.04;
+                reflection.position.y = -1.2 - Math.sin(elapsedTime * 1.5) * 0.04;
+
+                // 粒子微动
+                particles.rotation.y = elapsedTime * 0.02;
+
+                renderer.render(scene, camera);
+            }
+            animate();
         }
 
-        // --- Main Loop ---
-        function animate() {
-            processGestures();
-            dustSystem.rotation.y += 0.001;
-            particles.forEach(p => p.update());
-            composer.render();
+        // 切换艺术品函数
+        function switchModel(index) {
+            if(index === currentActiveIndex) return;
+            currentActiveIndex = index;
+
+            // 按钮UI高亮切换
+            const buttons = document.querySelectorAll('.nav-btn');
+            buttons.forEach((btn, i) => {
+                if(i === index) {
+                    btn.classList.remove('text-stone-400');
+                    btn.classList.add('text-cyan-200');
+                } else {
+                    btn.classList.remove('text-cyan-200');
+                    btn.classList.add('text-stone-400');
+                }
+            });
+
+            // 丝滑淡入淡出动效切换纹理
+            gsap.to(billboard.material, { opacity: 0, duration: 0.3, onComplete: () => {
+                billboard.material.map = textures[index];
+                reflection.material.map = textures[index];
+                billboard.material.needsUpdate = true;
+                reflection.material.needsUpdate = true;
+                gsap.to(billboard.material, { opacity: 1, duration: 0.5 });
+            }});
         }
 
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
+        // 窗口响应式重置大小
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            composer.setSize(window.innerWidth, window.innerHeight);
-        }
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
 
-        init();
+        // 初始化
+        window.onload = () => {
+            initThree();
+            
+            // GSAP 页面平滑视差与登场动效
+            gsap.from("#hero h1", { opacity: 0, y: 50, duration: 1.5, delay: 0.2, ease: "power4.out" });
+            gsap.from("#hero p", { opacity: 0, y: 30, duration: 1.5, delay: 0.5, ease: "power4.out" });
+        };
     </script>
 </body>
 </html>
